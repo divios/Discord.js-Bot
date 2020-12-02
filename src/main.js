@@ -1,56 +1,61 @@
+
+const fs = require('fs');
+const Discord = require('discord.js');
 const {Client, MessageEmbed} = require("discord.js");
 const {prefix, token} = require("./config.json");
 const client = new Client();
+
+client.commands = new Discord.Collection();
+
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    client.commands.set(command.name, command);
+}
 
 client.once("ready", () => {
     console.log("Bot listo");
 });
 
-
 client.on("message", message => {
 
-    if (message.author.bot) return 
+    if (message.author.bot) return
 
     if (message.content.toString().includes("<@!271751037704994817>")) {
-        const embed = new MessageEmbed()
-            .setTitle("NO hacer menciones al staff")
-            .setAuthor(message.member.displayName, message.author.displayAvatarURL())
-            .setColor(0x8FDDF7)
-            .setDescription("No menciones al staff eres bobo o que")
-            .addField("Revisa las reglas", "#reglas", true);
-        message.channel.send(embed);
+
+        const attachment = new Discord
+            .MessageAttachment('./resources/logo_wildcraft.png', 'logo_wildcraft.png');
+
+        const exampleEmbed = new MessageEmbed()
+            .setColor('#ff0000')
+            .attachFiles(attachment)
+            .setAuthor('IMPORTANTE', 'https://static.ariste.info/wp-content/uploads/2020/04/1200px-Antu_dialog-warning.svg_.png', 'https://discord.js.org')
+            .setDescription('Ey <@!' + message.author.id + '> \n¡No esta permitido mencionar al staff! \nPor favor espera pacientemente a que te repondan\n\n**Si es un asunto importante puedes abrir tickets donde te responderan mas rapido y personas de confianza en el server. Para abrir ticket <#730090650841907350>**')
+            .setThumbnail('attachment://logo_wildcraft.png')
+
         message.delete();
+        message.channel.send(exampleEmbed);
     }
 });
+
 /////////////////////COMANDOS//////////////////////////
 client.on("message", message => {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
 
     const args = message.content.slice(prefix.length).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
+    const commandName = args.shift().toLowerCase();
 
-    if (command === ("ip")) {
-        const embed = new MessageEmbed()
-            .setTitle("Wildcra (1.8 - 1.16.x)")
-            .setAuthor(message.member.displayName, message.author.displayAvatarURL())
-            .setColor(0x8FDDF7)
-            .setDescription("Ip y Puertos de wildcraft")
-            .addField("ip", "Wildcraft.network", true)
-            .addField("Puerto Java", "25565", true)
-            .addField("Puerto Bedrock", "19132", true)
-            .addField("si quieres saber como unirte a un servidor en minecraaft pe", "[Pagina](https://es.wikihow.com/unirse-a-servidores-en-Minecraft-PE)");
-        message.channel.send(embed)
-    }
+    const command = client.commands.get(commandName)
+        || client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
 
-    if (command === ("registrarse")) {
-        const embed = new MessageEmbed()
-            .setTitle("Registrarse ")
-            .setAuthor(message.member.displayName, message.author.displayAvatarURL())
-            .setColor(0xA4D31D)
-            .setDescription("En el servidor para que no te roben la cuenta tiene un sistema de registro")
-            .addField("la primera vez que entres te pedira que te registres para eso usa", "/register <contraseña> <confirma contraseña>")
-            .addField("despues que te registres las proximas veces que entres al server te pedira que te logees para eso usa", "/login <contraseña>")
-        message.channel.send(embed)
+    if (!command) return;
+
+    try {
+        command.execute(message, args);
+    } catch (error) {
+        console.error(error);
+        message.reply('Hubo un error al intentar ejecutar ese comando');
     }
 
 });
